@@ -1,4 +1,16 @@
-import uuid
+__authors = "PP, RJ, SC, SC"
+
+"""
+An e-Store Application with Recommendation system.
+A program that creates data, fixes them and uploads them to S3 bucket and then from S3 to DynamoDB after data processing.
+
+Authors:
+Pranjal Pandey
+Ravikiran Jois Yedur Prabhakar
+Suhas Choletti
+Shaivya Chandra
+"""
+
 import boto3
 from io import StringIO
 import csv
