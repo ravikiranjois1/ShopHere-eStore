@@ -44,11 +44,10 @@ def initial_fix_with_quotes(s3_resource, conversion_to_csv=False) -> None:
     - The file here is a csv
     """
 
-    # file_names = ['reviews_Musical_Instruments.json', 'reviews_Baby.json', 'reviews_Grocery_and_Gourmet_Food.json',
-    #               'reviews_Office_Products.json', 'meta_Baby.json', 'meta_Grocery_and_Gourmet_Food.json',
-    #               'meta_Musical_Instruments.json', 'meta_Office_Products.json']
     file_names = ['reviews_Musical_Instruments.json', 'reviews_Baby.json', 'reviews_Grocery_and_Gourmet_Food.json',
-                  'reviews_Office_Products.json']
+                  'reviews_Office_Products.json', 'meta_Baby.json', 'meta_Grocery_and_Gourmet_Food.json',
+                  'meta_Musical_Instruments.json', 'meta_Office_Products.json']
+
     for file in file_names:
         with open('Original_Data/' + file) as f:
             invalid_json = f.read()
@@ -77,11 +76,10 @@ def json_formatter(s3_resource) -> None:
     """
     To fix the json format and upload the files to s3 bucket
     """
-    # file_names = ['reviews_Musical_Instruments.json', 'reviews_Baby.json', 'reviews_Grocery_and_Gourmet_Food.json',
-    #               'reviews_Office_Products.json', 'meta_Baby.json', 'meta_Grocery_and_Gourmet_Food.json',
-    #               'meta_Musical_Instruments.json', 'meta_Office_Products.json']
     file_names = ['reviews_Musical_Instruments.json', 'reviews_Baby.json', 'reviews_Grocery_and_Gourmet_Food.json',
-                  'reviews_Office_Products.json']
+                  'reviews_Office_Products.json', 'meta_Baby.json', 'meta_Grocery_and_Gourmet_Food.json',
+                  'meta_Musical_Instruments.json', 'meta_Office_Products.json']
+
     for file in file_names:
         file_read_from = 'Original_Data/' + file
         file_write_to = 'Fixed_Data/' + file
@@ -105,13 +103,13 @@ def json_formatter(s3_resource) -> None:
         first_object = s3_resource.Object(bucket_name='trials-project', key=file)
         first_object.upload_file(file_write_to)
 
-        # users = open('Fixed_Data/users.json')
-        # first_object = s3_resource.Object(bucket_name='trials-project', key=users)
-        # first_object.upload_file(file_write_to)
-        #
-        # orders = open('Fixed_Data/orders.json')
-        # first_object = s3_resource.Object(bucket_name='trials-project', key=orders)
-        # first_object.upload_file(file_write_to)
+        users = open('Fixed_Data/users.json')
+        first_object = s3_resource.Object(bucket_name='trials-project', key=users)
+        first_object.upload_file(file_write_to)
+
+        orders = open('Fixed_Data/orders.json')
+        first_object = s3_resource.Object(bucket_name='trials-project', key=orders)
+        first_object.upload_file(file_write_to)
 
     return
 
@@ -208,31 +206,31 @@ def put_data_to_DynamoDB(s3_resource, dynamodb) -> None:
     products_filenames = ['meta_Baby.json', 'meta_Grocery_and_Gourmet_Food.json',
                           'meta_Musical_Instruments.json', 'meta_Office_Products.json']
 
-    # for file in reviewer_filenames:
-    #     first_object = s3_resource.Object(bucket_name='trials-project', key=file)
-    #     body = first_object.get()['Body'].read().decode('UTF-8')
-    #     reviews = json.loads(body, parse_float=Decimal)
-    #     table = dynamodb.Table('ReviewerData')
-    #     for review in reviews:
-    #         table.put_item(Item=review)
-    #     print(file+' - Done - ReviewerData')
-    #
-    # for file in products_filenames:
-    #     first_object = s3_resource.Object(bucket_name='trials-project', key=file)
-    #     body = first_object.get()['Body'].read().decode('UTF-8')
-    #     products = json.loads(body, parse_float=Decimal)
-    #     table = dynamodb.Table('ProductsData')
-    #     for product in products:
-    #         table.put_item(Item=product)
-    #     print(file + ' - Done - ProductsData')
-    #
-    # first_object = s3_resource.Object(bucket_name='trials-project', key='users.json')
-    # body = first_object.get()['Body'].read().decode('UTF-8')
-    # users = json.loads(body, parse_float=Decimal)
-    # table = dynamodb.Table('UsersData')
-    # for user in users:
-    #     table.put_item(Item=user)
-    # print(' - Done - UsersData')
+    for file in reviewer_filenames:
+        first_object = s3_resource.Object(bucket_name='trials-project', key=file)
+        body = first_object.get()['Body'].read().decode('UTF-8')
+        reviews = json.loads(body, parse_float=Decimal)
+        table = dynamodb.Table('ReviewerData')
+        for review in reviews:
+            table.put_item(Item=review)
+        print(file+' - Done - ReviewerData')
+
+    for file in products_filenames:
+        first_object = s3_resource.Object(bucket_name='trials-project', key=file)
+        body = first_object.get()['Body'].read().decode('UTF-8')
+        products = json.loads(body, parse_float=Decimal)
+        table = dynamodb.Table('ProductsData')
+        for product in products:
+            table.put_item(Item=product)
+        print(file + ' - Done - ProductsData')
+
+    first_object = s3_resource.Object(bucket_name='trials-project', key='users.json')
+    body = first_object.get()['Body'].read().decode('UTF-8')
+    users = json.loads(body, parse_float=Decimal)
+    table = dynamodb.Table('UsersData')
+    for user in users:
+        table.put_item(Item=user)
+    print(' - Done - UsersData')
 
     first_object = s3_resource.Object(bucket_name='trials-project', key='orders_data.json')
     body = first_object.get()['Body'].read().decode('UTF-8')
