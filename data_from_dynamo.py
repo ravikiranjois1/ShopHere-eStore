@@ -2,14 +2,8 @@ import boto3
 import json
 from decimal import Decimal
 
-dynamodb = boto3.resource('dynamodb',
-                          region_name='us-east-1',
-                          aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
-                          aws_secret_access_key='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'
-                          )
 
-
-class genfakefloat(float):
+class GenFakeFloat(float):
     def __init__(self, value):
         self._value = value
 
@@ -19,22 +13,53 @@ class genfakefloat(float):
 
 def encoder(o):
     if isinstance(o, Decimal):
-        return genfakefloat(o)
+        return GenFakeFloat(o)
     raise TypeError(repr(o) + " is not JSON serializable")
 
 
-tables = ["Orders", "ProductsData", "UsersData", "ReviewerData"]
+def json_gen():
+    tables = ["ProductsData", "UsersData", "ReviewerData", "Orders"]
 
-for table in tables:
-    orders_table = dynamodb.Table(table)
+    dynamodb = boto3.resource('dynamodb',
+                              region_name='us-east-1',
+                              aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
+                              aws_secret_access_key='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'
+                              )
 
-    final_dict = dict()
-    final_dict[table] = []
+    # dynamo_client = boto3.client('dynamodb',
+    #                              region_name='us-east-1',
+    #                              aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
+    #                              aws_secret_access_key='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'
+    #                              )
 
-    response = orders_table.scan()
-    for index in range(len(response["Items"])):
-        entry = {"PutRequest": {"Item": response['Items'][index]}}
-        final_dict[table].append(entry)
+    for table in tables:
+        # response_schema = dynamo_client.describe_table(
+        #     TableName=table
+        # )
 
-    with open("dynamo-export/"+table+".json", "w") as f:
-        json.dump(final_dict, f, default=encoder)
+        orders_table = dynamodb.Table(table)
+
+        final_list = []
+        response = orders_table.scan()
+        for index in range(len(response["Items"])):
+            final_list.append(response['Items'][index])
+
+        with open("dynamo-export/" + table + ".json", "w") as f:
+            json.dump(final_list, f, default=encoder)
+
+        batch_write(table, dynamodb)
+
+
+def batch_write(table, dynamodb):
+    with open("dynamo-export/" + table + ".json", "r") as f:
+        json_data = json.load(f, parse_float=Decimal)
+
+    table_ob = dynamodb.Table(table)
+
+    with table_ob.batch_writer() as batch:
+        for item in json_data:
+            batch.put_item(Item=item)
+
+
+if __name__ == '__main__':
+    json_gen()

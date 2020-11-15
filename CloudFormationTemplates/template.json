@@ -1,0 +1,92 @@
+{
+  "Resources" : {
+    "ProductsDynamoTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [
+          {
+            "AttributeName": "asin",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema" : [
+          {
+            "AttributeName": "asin",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName" : "ProductsData_test1"
+      }
+    },
+    "OrdersDynamoTable" : {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "order_id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "order_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "Orders_test1"
+      }
+    },
+    "UsersDynamoTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [
+          {
+            "AttributeName": "userID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema" : [
+          {
+            "AttributeName": "userID",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName" : "UsersData_test1"
+      }
+    },
+    "ReviewerDynamoTable" : {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "reviewerID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "reviewerID",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "ReviewerData_test1"
+      }
+    }
+  }
+}
