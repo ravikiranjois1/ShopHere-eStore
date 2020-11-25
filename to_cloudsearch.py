@@ -3,11 +3,20 @@ import time
 import boto.cloudsearch2
 from boto.cloudsearch2.domain import Domain
 
+"""
+To load data from JSON file to CloudSearch in its entirety
+Authors:
+1. Pranjal Pandey
+2. Ravikiran Jois
+3. Shaivya Chandra
+4. Suhas Choletti
+"""
+
 
 def get_connection():
     conn = boto.cloudsearch2.connect_to_region(region_name='us-east-1',
-                                               aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
-                                               aws_secret_access_key='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')
+                                               aws_access_key_id='AKIASDF5LFVUHMR6IU4T',
+                                               aws_secret_access_key='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')
 
     domain_data = conn.describe_domains('cs-products')
 
@@ -24,7 +33,7 @@ def insert_data_to_cloudsearch():
         list_of_items = json.load(f)
         count = 0
         start_time = time.time()
-        data_count =0
+        data_count = 72500
         domain, doc_service, conn = get_connection()
         while len(list_of_items)>data_count:
             for entry in list_of_items[data_count:]:
@@ -37,10 +46,10 @@ def insert_data_to_cloudsearch():
                 data_count += 1
                 count += 1
                 try:
-
                     if count == 350:
                         print("Im here")
                         result = doc_service.commit()
+                        domain, doc_service, conn = get_connection()
                         count = 0
                 except:
                     continue

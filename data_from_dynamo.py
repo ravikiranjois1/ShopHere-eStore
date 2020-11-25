@@ -1,6 +1,17 @@
+import time
 import boto3
 import json
 from decimal import Decimal
+
+"""
+To get data from DynamoDB and write to JSON files and also batch write the entirety of the data to 
+Dynamo which may take about 14-15 hours to execute
+Authors:
+1. Pranjal Pandey
+2. Ravikiran Jois
+3. Shaivya Chandra
+4. Suhas Choletti
+"""
 
 
 class GenFakeFloat(float):
@@ -19,27 +30,17 @@ def encoder(o):
 
 def json_gen():
     tables = ["ProductsData", "UsersData", "ReviewerData", "Orders"]
+    tables = ["ProductsData", "UsersData", "Orders"]
     # tables = ["ProductsData"]
 
     dynamodb = boto3.resource('dynamodb',
                               region_name='us-east-1',
-                              aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
-                              aws_secret_access_key='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'
+                              aws_access_key_id='AKIASDF5LFVUHMR6IU4T',
+                              aws_secret_access_key='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'
                               )
 
-    # dynamo_client = boto3.client('dynamodb',
-    #                              region_name='us-east-1',
-    #                              aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
-    #                              aws_secret_access_key='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'
-    #                              )
-
     for table in tables:
-        # response_schema = dynamo_client.describe_table(
-        #     TableName=table
-        # )
-
         dynamoTable = dynamodb.Table(table)
-
         final_list = []
         search_list = []
         response = dynamoTable.scan()
@@ -49,9 +50,9 @@ def json_gen():
             data.extend(response['Items'])
 
         for index in range(len(data)):
-            data[index]["asin"] = data[index].get("asin", "").strip()
-            data[index]["title"] = data[index].get("title", "").strip()
-            data[index]["description"] = data[index].get("description", "").strip()
+            data[index]["asin"] = data[index].get("asin")
+            data[index]["title"] = data[index].get("title")
+            data[index]["description"] = data[index].get("description")
             if table == "ProductsData":
                 prod_dict = dict()
                 if data[index].get("asin") is None or data[index].get("title") is None \
@@ -61,41 +62,44 @@ def json_gen():
                 if "'" in data[index].get("description"):
                     print("here")
                     "'" in data[index].get("description") == "a"
-                prod_dict["asin"] = data[index].get("asin", None)
-                prod_dict["title"] = data[index].get("title", None)
-                prod_dict["description"] = data[index].get("description", None)
+                if data[index].get("asin") is not None:
+                    prod_dict["asin"] = data[index].get("asin", "dummy")
+                elif data[index].get("title") is not None:
+                    prod_dict["title"] = data[index].get("title", "dummy")
+                elif data[index].get("description") is not None:
+                    prod_dict["description"] = data[index].get("description", "dummy")
                 search_list.append(prod_dict)
             final_list.append(data[index])
 
-        if table == "ProductsData":
-            with open("dynamo-export/" + table + "_search.json", "w") as f:
-                json.dump(search_list, f, default=encoder)
-            # batch_write(table + "_search", dynamodb)
 
-        with open("dynamo-export/" + table + ".json", "w") as f:
+        with open("dynamo-export-rj-2/" + table + ".json", "w") as f:
             json.dump(final_list, f, default=encoder)
+        print(table, " done")
 
-        # batch_write(table, dynamodb)
 
+def batch_write():
+    dynamodb = boto3.resource('dynamodb',
+                              region_name='us-east-1',
+                              aws_access_key_id='AKIASDF5LFVUHMR6IU4T',
+                              aws_secret_access_key='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'
+                              )
 
-def batch_write(table, dynamodb):
-    with open("dynamo-export/" + table + ".json", "r") as f:
-        json_data = json.load(f, parse_float=Decimal)
+    tables = ["UsersData", "ReviewerData", "Orders", "ProductsData_search", "ProductsData"]
+    start = time.time()
+    for table in tables:
+        print(table)
+        with open("dynamo-export/" + table + ".json", "r") as f:
+            json_data = json.load(f, parse_float=Decimal)
 
-    table_ob = dynamodb.Table(table)
+        table_ob = dynamodb.Table(table)
 
-    with table_ob.batch_writer() as batch:
+        # with table_ob.batch_writer() as batch:
         for item in json_data:
-            batch.put_item(Item=item)
+            table_ob.put_item(Item=item)
+        print(time.time() - start)
+    print("Final:", time.time()-start)
 
-
-# table = "ProductES"
-# dynamodb = boto3.resource('dynamodb',
-#                               region_name='us-east-1',
-#                               aws_access_key_id='AKIAYUPXS4UXVNYE2PD2',
-#                               aws_secret_access_key='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'
-#                               )
-# batch_write(table, dynamodb)
 
 if __name__ == '__main__':
     json_gen()
+    batch_write()
