@@ -1,0 +1,1261 @@
+{
+  "Resources": {
+    "RekognitionStorage": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "BucketName": "estore-rekognition-15"
+      }
+    },
+    "LambdaPackagesStorage": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "BucketName": "estore-lambdapackages-zipped5"
+      }
+    },
+    "PersonalizeStorage": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "BucketName": "estore-personalize-15"
+      }
+    },
+    "ProductsDynamoTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "asin",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "asin",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "ProductsData"
+      }
+    },
+    "OrdersDynamoTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "order_id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "order_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "Orders"
+      }
+    },
+    "UsersDynamoTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "userID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "userID",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "UsersData"
+      }
+    },
+    "ReviewerDynamoTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "reviewerID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "reviewerID",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "ReviewerData"
+      }
+    },
+    "SearchTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "asin",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "asin",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "ProductsData_search"
+      }
+    },
+    "EStoreAPI": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "e_store",
+        "Description": "API used for the E-Store",
+        "FailOnWarnings": true
+      }
+    },
+    "LambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SignInLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "EStoreAPI"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "s3LambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref" : "ProductFetchLiteLambda"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "s3.amazonaws.com"
+      }
+    },
+    "EStoreAPIStage": {
+      "DependsOn": [
+        "ApiGatewayAccount"
+      ],
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "EStoreApiDeployment"
+        },
+        "MethodSettings": [
+          {
+            "DataTraceEnabled": true,
+            "HttpMethod": "*",
+            "LoggingLevel": "INFO",
+            "ResourcePath": "/*"
+          }
+        ],
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "StageName": "LATEST"
+      }
+    },
+    "ApiGatewayCloudWatchLogsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "apigateway.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ApiGatewayLogsPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams",
+                    "logs:PutLogEvents",
+                    "logs:GetLogEvents",
+                    "logs:FilterLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ApiGatewayAccount": {
+      "Type": "AWS::ApiGateway::Account",
+      "Properties": {
+        "CloudWatchRoleArn": {
+          "Fn::GetAtt": [
+            "ApiGatewayCloudWatchLogsRole",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "EStoreApiDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": [
+        "SignInPost",
+        "SearchRequestGET",
+        "ProductRequestGET",
+        "OrdersAddGet",
+        "OrderRequestGET",
+        "RekognitionRequestGET",
+        "PersonalizeRequestGET"
+      ],
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "StageName": "dev"
+      }
+    },
+    "getSignInResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "signin"
+      }
+    },
+    "getSearchResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "search"
+      }
+    },
+    "getSearchResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getSearchResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "getProductFetchResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "product"
+      }
+    },
+    "getProductFetchResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getProductFetchResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "getProductLiteFetchResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getProductFetchResource"
+        },
+        "PathPart": "lite"
+      }
+    },
+    "getProductLiteFetchResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getProductLiteFetchResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "putOrdersResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "orders"
+      }
+    },
+    "getOrderResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "putOrdersResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "getRekognitionResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "rekognition"
+      }
+    },
+    "getRekognitionResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getRekognitionResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "getPersonalizeResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "EStoreAPI",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "personalize"
+      }
+    },
+    "getPersonalizeResourceid": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "ParentId": {
+          "Ref": "getPersonalizeResource"
+        },
+        "PathPart": "{id}"
+      }
+    },
+    "SignInPost": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "POST",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SignInLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getSignInResource"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "SearchRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SearchLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getSearchResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "OrderRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GetOrderLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getOrderResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "ProductRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ProductFetchLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getProductFetchResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "ProductLiteRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ProductFetchLiteLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getProductLiteFetchResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "OrdersAddGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "POST",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "AddOrdersLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "putOrdersResource"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "RekognitionRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "RekognitionLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getRekognitionResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "PersonalizeRequestGET": {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PersonalizeLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": "$input.json('$.body')"
+              }
+            }
+          ]
+        },
+        "RequestParameters": {
+          "method.request.querystring.name": false
+        },
+        "ResourceId": {
+          "Ref": "getPersonalizeResourceid"
+        },
+        "RestApiId": {
+          "Ref": "EStoreAPI"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ]
+      }
+    },
+    "SignInLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import boto3",
+                "from boto3.dynamodb.conditions import Key",
+                "def lambda_handler(event, context):",
+                "# define the handler function that the Lambda service will use as an entry point",
+                "# return {",
+                "#     \"statusCode\": 200,",
+                "#     \"body\": json.dumps(event)",
+                "# }",
+                "dynamodb = boto3.resource('dynamodb')",
+                "table = dynamodb.Table('UsersData')",
+                "userID = event[\"userID\"]",
+                "response = table.query(",
+                "             KeyConditionExpression=Key('userID').eq(userID)",
+                ")",
+                "if len(response[\"Items\"]) == 0:",
+                "   return {",
+                "       'statusCode': 404,",
+                "       'headers': {",
+                "           'Access-Control-Allow-Origin' : '*',",
+                "           'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "           'Access-Control-Allow-Credentials' : True,",
+                "           'Content-Type': 'application/json'",
+                "       }",
+                "       'body': json.dumps(\"Username not found!\")",
+                "   }",
+                "else:",
+                "   password = response[\"Items\"][0][\"password\"]",
+                "   if password == event[\"password\"]:",
+                "       return {",
+                "           'statusCode': 200,",
+                "           'headers': {",
+                "               'Access-Control-Allow-Origin' : '*',",
+                "               'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "               'Access-Control-Allow-Credentials' : true,",
+                "               'Content-Type': 'application/json'",
+                "           },",
+                "           'body': json.dumps(\"Username Exists\")",
+                "       }",
+                "   else:",
+                "       return {",
+                "           'statusCode': 401,",
+                "           'headers': {",
+                "               'Access-Control-Allow-Origin' : '*',",
+                "               'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "               'Access-Control-Allow-Credentials' : True,",
+                "               'Content-Type': 'application/json'",
+                "           },",
+                "           'body': json.dumps(\"Password Incorrect!\")",
+                "       }",
+                ""
+              ]
+            ]
+          }
+        },
+        "Description": "Function for Login Authentication",
+        "FunctionName": "Signin-Authentication",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "SearchLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import boto3",
+                "# import boto",
+                "from boto3.dynamodb.conditions import Key",
+                "from decimal import Decimal",
+                "from boto3.dynamodb.conditions import Contains",
+                "class GenFakeFloat(float):",
+                "   def __init__(self, value):",
+                "       self._value = value",
+                "",
+                "   def __repr__(self):",
+                "       return str(self._value)",
+                "",
+                "def encoder(o):",
+                "   if isinstance(o, Decimal):",
+                "       return GenFakeFloat(o)",
+                "   raise TypeError(repr(o) + \" is not JSON serializable\")",
+                "",
+                "def lambda_handler(event, context):",
+                "   client = boto3.client('cloudsearchdomain',",
+                "       endpoint_url= 'http://search-cs-products-micgtzibe3j57ww6drsyjy64ua.us-east-1.cloudsearch.amazonaws.com'",
+                "   )",
+                "   responses = client.search(",
+                "       query=event[\"pathParameters\"][\"id\"],",
+                "       size = 10",
+                "   )",
+                "   ids = []",
+                "   for response in responses[\"hits\"][\"hit\"]:",
+                "       ids.append(response[\"id\"])",
+                "",
+                "   return {",
+                "       'statusCode': 200,",
+                "       'headers': {",
+                "           'Access-Control-Allow-Origin' : '*',",
+                "           'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "           'Access-Control-Allow-Credentials' : True,",
+                "           'Content-Type': 'application/json'",
+                "        },",
+                "       'body': json.dumps(ids),",
+                "       'isBase64Encoded': False",
+                "   }"
+              ]
+            ]
+          }
+        },
+        "Description": "Function for Search Functionality",
+        "FunctionName": "searchFunctionality",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "GetOrderLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "basic-estore-data",
+          "S3Key": "Fetch-Order.zip"
+        },
+        "Description": "Function for Get Orders Functionality",
+        "FunctionName": "Fetch-Order",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "ProductFetchLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "basic-estore-data",
+          "S3Key": "Fetch-Product.zip"
+        },
+        "Description": "Function for Fetching Products",
+        "FunctionName": "Fetch-Product",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "ProductFetchLiteLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "basic-estore-data",
+          "S3Key": "Fetch_Product_Lite.zip"
+        },
+        "Description": "Function for Fetching Products Lite",
+        "FunctionName": "Fetch_Product_Lite",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "AddOrdersLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import boto3",
+                "from boto3.dynamodb.conditions import Key",
+                "import  json",
+                "from datetime import datetime",
+                "import time",
+                "from random import randint",
+                "",
+                "def lambda_handler(event, context):",
+                "   dynamodb = boto3.resource('dynamodb')",
+                "   ordersTable = dynamodb.Table('Orders')",
+                "   products_ordered = dict()",
+                "   event = json.loads(event['body'])",
+                "   for products in event['products']:",
+                "       products_ordered[products] = randint(1,10)",
+                "   unixtime = int(time.time())",
+                "   now = datetime.now()",
+                "   time_now = now.strftime('%d/%m/%Y %H:%M:%S')",
+                "   order_id = 'OD'+str(unixtime)",
+                "   PutOrdersResponse = ordersTable.put_item(",
+                "      Item={'order_id': order_id, 'order_time': time_now, 'ordered_by': event['id'],'products_ordered': products_ordered, 'unixorderTime': unixtime}",
+                "   )",
+                "",
+                "   return {",
+                "      'statusCode': 200,",
+                "      'headers': {",
+                "            'Access-Control-Allow-Origin' : '*',",
+                "            'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "            'Access-Control-Allow-Credentials' : True,",
+                "            'Content-Type': 'application/json'",
+                "        },",
+                "    'body': order_id,",
+                "    'isBase64Encoded': False",
+                "  }"
+              ]
+            ]
+          }
+        },
+        "Description": "Function for Adding Orders",
+        "FunctionName": "AddOrder",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "RekognitionLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import boto3",
+                "",
+                "def lambda_handler(event, context):",
+                "   bucket='estore-rekognition-stock'",
+                "   photo = event['pathParameters']['id'] + '.jpg'",
+                "   client=boto3.client('rekognition')",
+                "",
+                "   #process using S3 object",
+                "   response = client.detect_labels(Image={'S3Object': {'Bucket': bucket, 'Name': photo}},",
+                "       MaxLabels=1,",
+                "       MinConfidence=30)",
+                "",
+                "   #Get the custom labels",
+                "   label=response['Labels'][0]['Name']",
+                "   return {",
+                "       'statusCode': 200,",
+                "       'headers': {",
+                "           'Access-Control-Allow-Origin' : '*',",
+                "           'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "           'Access-Control-Allow-Credentials' : True,",
+                "           'Content-Type': 'application/json'",
+                "        },",
+                "       'body': json.dumps(label)",
+                "   }"
+              ]
+            ]
+          }
+        },
+        "Description": "Function for Rekognition Implementation",
+        "FunctionName": "Rekognition",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "PersonalizeLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import boto3",
+                "",
+                "def lambda_handler(event, context):",
+                "   personalize_runtime = boto3.client('personalize-runtime', region_name='us-east-1', aws_access_key_id='AKIAYUPXS4UXVNYE2PD2', aws_secret_access_key='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')",
+                "   rec_response = personalize_runtime.get_recommendations(campaignArn = \"arn:aws:personalize:us-east-1:593761592623:campaign/personalize_campaign\", userId = event[\"pathParameters\"][\"id\"])",
+                "   responses = rec_response[\"itemList\"][:6]",
+                "   ids = []",
+                "   for response in responses:",
+                "       ids.append(response['itemId'])",
+                "   return {",
+                "       'statusCode': 200,",
+                "       'headers': {",
+                "           'Access-Control-Allow-Origin' : '*',",
+                "           'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',",
+                "           'Access-Control-Allow-Credentials' : True,",
+                "           'Content-Type': 'application/json'",
+                "       },",
+                "       'body': json.dumps(ids),",
+                "       'isBase64Encoded': False",
+                "   }"
+              ]
+            ]
+          }
+        },
+        "Description": "Function for getting recommendations from AWS Personalize",
+        "FunctionName": "GetRecommendations",
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.8"
+      }
+    }
+  }
+}
